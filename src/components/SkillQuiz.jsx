@@ -48,38 +48,54 @@ const SkillQuiz = ({ career, profile, toast, onComplete }) => {
 
   const generateQuestions = async (topic, difficulty) => {
     const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    console.log('API Key exists:', !!apiKey);
-    console.log('API Key first 10 chars:', apiKey?.substring(0, 10));
-    if (!apiKey) throw new Error('API key not found');
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    if (!apiKey) {
+      throw new Error('API key missing');
+    }
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: `Create 10 multiple choice questions about ${topic} at ${difficulty} level.
-IMPORTANT: Return ONLY a JSON array. No markdown. No explanation. Just JSON.
-Format:
-[{"question":"question text?","options":["option1","option2","option3","option4"],"correct":0,"explanation":"why correct"}]
-correct is 0,1,2,3 index of correct answer.`
+              text: `Generate 10 MCQ questions on ${topic} - ${difficulty} level.
+Return ONLY this JSON array, nothing else:
+[{"question":"?","options":["A","B","C","D"],"correct":0,"explanation":"why"}]`
             }]
-          }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 2048
+          }
         })
       }
     );
 
-    clearTimeout(timeoutId);
     const data = await response.json();
-    const rawText = data.candidates[0].content.parts[0].text;
-    const clean = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(clean);
+
+    console.log('Full API response:', JSON.stringify(data));
+
+    if (data.error) {
+      throw new Error(data.error.message);
+    }
+
+    if (!data.candidates || !data.candidates[0]) {
+      throw new Error('No response from Gemini: ' + JSON.stringify(data));
+    }
+
+    const text = data.candidates[0].content.parts[0].text;
+    const clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    try {
+      return JSON.parse(clean);
+    } catch (e) {
+      const match = clean.match(/\[[\s\S]*\]/);
+      if (match) return JSON.parse(match[0]);
+      throw new Error('Could not parse questions: ' + clean.substring(0, 100));
+    }
   };
 
   const startQuiz = async (topic, difficulty) => {
