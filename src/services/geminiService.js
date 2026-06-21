@@ -266,56 +266,140 @@ Return ONLY valid JSON (no markdown) with this structure:
   };
 };
 
-// ----- JOB MATCHES (NEW: 6 cards with salary) -----
+// ----- JOB MATCHES (real job data + links + learning roadmaps) -----
+const JOB_SKILLS_DB = {
+  "Frontend Developer": {
+    skills: ["React", "JavaScript", "CSS", "HTML", "TypeScript", "Git", "REST APIs"],
+    experience: "0-2 years", salaryINR: "4-12 LPA", salaryUSD: "$50K-$90K",
+    learning: [
+      { skill: "React", youtube: "freeCodeCamp React Course", site: "react.dev" },
+      { skill: "JavaScript", youtube: "Traversy Media JS", site: "javascript.info" },
+      { skill: "CSS", youtube: "Kevin Powell CSS", site: "css-tricks.com" },
+      { skill: "TypeScript", youtube: "Fireship TS", site: "typescriptlang.org" },
+      { skill: "Git", youtube: "Programming with Mosh Git", site: "git-scm.com" },
+    ],
+    estTime: "3-4 months"
+  },
+  "Backend Engineer": {
+    skills: ["Node.js", "Python", "SQL", "REST APIs", "Docker", "Git", "PostgreSQL"],
+    experience: "0-2 years", salaryINR: "5-15 LPA", salaryUSD: "$60K-$100K",
+    learning: [
+      { skill: "Node.js", youtube: "The Net Ninja Node.js", site: "nodejs.org" },
+      { skill: "Python", youtube: "Corey Schafer Python", site: "realpython.com" },
+      { skill: "SQL", youtube: "freeCodeCamp SQL", site: "w3schools.com/sql" },
+      { skill: "Docker", youtube: "TechWorld with Nana Docker", site: "docker.com" },
+      { skill: "PostgreSQL", youtube: "freeCodeCamp PostgreSQL", site: "postgresql.org" },
+    ],
+    estTime: "4-6 months"
+  },
+  "Full Stack Developer": {
+    skills: ["React", "Node.js", "MongoDB", "SQL", "Git", "REST APIs", "AWS"],
+    experience: "0-2 years", salaryINR: "6-18 LPA", salaryUSD: "$60K-$110K",
+    learning: [
+      { skill: "React + Node.js", youtube: "freeCodeCamp Full Stack", site: "fullstackopen.com" },
+      { skill: "MongoDB", youtube: "MongoDB University", site: "mongodb.com/university" },
+      { skill: "AWS", youtube: "freeCodeCamp AWS", site: "aws.amazon.com/training" },
+      { skill: "SQL", youtube: "Programming with Mosh SQL", site: "w3schools.com/sql" },
+      { skill: "Git", youtube: "Fireship Git", site: "git-scm.com" },
+    ],
+    estTime: "5-7 months"
+  },
+  "AI/ML Engineer": {
+    skills: ["Python", "TensorFlow", "PyTorch", "ML", "Statistics", "SQL", "NLP"],
+    experience: "0-2 years", salaryINR: "8-25 LPA", salaryUSD: "$80K-$140K",
+    learning: [
+      { skill: "Python for ML", youtube: "sentdex Python ML", site: "scikit-learn.org" },
+      { skill: "TensorFlow", youtube: "TensorFlow Official", site: "tensorflow.org/learn" },
+      { skill: "Machine Learning", youtube: "Andrew Ng ML Course", site: "coursera.org/ml" },
+      { skill: "Statistics", youtube: "StatQuest with Josh", site: "khanacademy.org/math/statistics-probability" },
+      { skill: "SQL", youtube: "Alex The Analyst SQL", site: "w3schools.com/sql" },
+    ],
+    estTime: "6-9 months"
+  },
+  "Data Analyst": {
+    skills: ["SQL", "Python", "Excel", "Tableau", "Power BI", "Statistics", "Data Visualization"],
+    experience: "0-1 years", salaryINR: "3-10 LPA", salaryUSD: "$45K-$80K",
+    learning: [
+      { skill: "SQL", youtube: "Alex The Analyst SQL", site: "w3schools.com/sql" },
+      { skill: "Python", youtube: "Corey Schafer Python", site: "realpython.com" },
+      { skill: "Excel", youtube: "Excel is Fun", site: "exceljet.net" },
+      { skill: "Tableau", youtube: "Tableau Tim", site: "tableau.com/learn" },
+      { skill: "Power BI", youtube: "Guy in a Cube", site: "learn.microsoft.com/power-bi" },
+    ],
+    estTime: "2-4 months"
+  },
+  "DevOps Engineer": {
+    skills: ["Docker", "Kubernetes", "AWS", "Linux", "CI/CD", "Terraform", "Python"],
+    experience: "1-3 years", salaryINR: "8-22 LPA", salaryUSD: "$80K-$130K",
+    learning: [
+      { skill: "Docker", youtube: "TechWorld with Nana", site: "docker.com" },
+      { skill: "Kubernetes", youtube: "Kunal Kushwaha K8s", site: "kubernetes.io/docs" },
+      { skill: "AWS", youtube: "freeCodeCamp AWS", site: "aws.amazon.com/training" },
+      { skill: "Linux", youtube: "Tutorial Linux", site: "linuxjourney.com" },
+      { skill: "Terraform", youtube: "freeCodeCamp Terraform", site: "terraform.io" },
+    ],
+    estTime: "6-10 months"
+  },
+};
+
+const JOB_LINKS = (title) => ({
+  linkedin: `https://linkedin.com/jobs/search/?keywords=${encodeURIComponent(title)}`,
+  naukri: `https://naukri.com/${encodeURIComponent(title.toLowerCase().replace(/\s+/g, '-'))}-jobs`,
+  internshala: `https://internshala.com/internships/${encodeURIComponent(title.toLowerCase().replace(/\s+/g, '-'))}-internships`,
+  indeed: `https://indeed.com/jobs?q=${encodeURIComponent(title)}`,
+});
+
 export const getJobMatches = async (profile) => {
-  const prompt = `${SYSTEM_PROMPT}
-Given this student profile, find 6 matching job roles with salary ranges.
-
-Profile:
-${JSON.stringify(profile, null, 2)}
-
-Return ONLY valid JSON array (no markdown):
-[{ "title": "...", "company": "...", "matchPercentage": <0-100>, "salaryRange": "$XXK-$XXK", "requiredSkills": ["..."], "studentSkills": ["..."], "missingSkills": ["..."], "whyMatch": "..." }]
-
-IMPORTANT: Each time this is called, return DIFFERENT roles. Never repeat.`;
-  const text = await callGemini(prompt, 0.9);
-  if (text) {
-    const parsed = parseJSON(text, null);
-    if (Array.isArray(parsed) && parsed.length >= 4) return parsed.slice(0, 6);
-  }
   const careerKey = findCareer(profile.targetCareer);
-  const jobs = {
-    "software developer": [
-      { title: "Frontend Developer", company: "WebFlow", salaryRange: "$70K-$95K", skills: ["React","TypeScript","CSS","Tailwind"] },
-      { title: "Backend Engineer", company: "APIStack", salaryRange: "$80K-$110K", skills: ["Node.js","PostgreSQL","Redis","Docker"] },
-      { title: "Full Stack Developer", company: "StartupHub", salaryRange: "$75K-$100K", skills: ["React","Node.js","MongoDB","AWS"] },
-      { title: "SDE Intern", company: "TechGiant", salaryRange: "$40K-$60K", skills: ["DSA","System Design","Problem Solving"] },
-      { title: "Mobile Developer", company: "AppWorks", salaryRange: "$70K-$95K", skills: ["React Native","TypeScript","API Integration"] },
-      { title: "DevOps Engineer", company: "CloudScale", salaryRange: "$85K-$120K", skills: ["Docker","K8s","CI/CD","AWS","Linux"] },
-    ],
-    "ai engineer": [
-      { title: "ML Engineer", company: "AI Labs", salaryRange: "$90K-$130K", skills: ["Python","TensorFlow","PyTorch","MLOps"] },
-      { title: "NLP Engineer", company: "TextAI", salaryRange: "$85K-$120K", skills: ["Python","NLP","Transformers","RAG"] },
-      { title: "Computer Vision Engineer", company: "VisionCorp", salaryRange: "$90K-$125K", skills: ["Python","OpenCV","PyTorch","Image Processing"] },
-      { title: "AI Research Intern", company: "DeepMind", salaryRange: "$50K-$70K", skills: ["Python","Research","Statistics","PyTorch"] },
-      { title: "Data Scientist", company: "DataDriven", salaryRange: "$80K-$115K", skills: ["Python","SQL","Statistics","ML"] },
-      { title: "ML Ops Engineer", company: "CloudML", salaryRange: "$90K-$130K", skills: ["Docker","K8s","MLOps","CI/CD"] },
-    ],
-  };
-  const jobList = jobs[careerKey] || jobs["software developer"];
   const studentSkills = (profile.skills || "").split(",").map(s => s.trim().toLowerCase());
-  return jobList.slice(0, 6).map(j => {
-    const missing = j.skills.filter(s => !studentSkills.some(us => s.toLowerCase().includes(us) || us.includes(s.toLowerCase())));
-    const has = j.skills.filter(s => studentSkills.some(us => s.toLowerCase().includes(us) || us.includes(s.toLowerCase())));
+
+  let jobTitles = Object.keys(JOB_SKILLS_DB);
+  const careerMap = {
+    "software developer": ["Frontend Developer", "Backend Engineer", "Full Stack Developer", "Data Analyst", "DevOps Engineer", "AI/ML Engineer"],
+    "ai engineer": ["AI/ML Engineer", "Data Analyst", "Full Stack Developer", "Backend Engineer", "DevOps Engineer", "Frontend Developer"],
+    "data analyst": ["Data Analyst", "Full Stack Developer", "Backend Engineer", "Frontend Developer", "DevOps Engineer", "AI/ML Engineer"],
+    "cybersecurity": ["DevOps Engineer", "Backend Engineer", "Full Stack Developer", "Frontend Developer", "Data Analyst", "AI/ML Engineer"],
+    "product manager": ["Full Stack Developer", "Data Analyst", "Frontend Developer", "Backend Engineer", "DevOps Engineer", "AI/ML Engineer"],
+    "ux designer": ["Frontend Developer", "Full Stack Developer", "Data Analyst", "Backend Engineer", "DevOps Engineer", "AI/ML Engineer"],
+    "devops": ["DevOps Engineer", "Backend Engineer", "Full Stack Developer", "Frontend Developer", "Data Analyst", "AI/ML Engineer"],
+  };
+  jobTitles = careerMap[careerKey] || jobTitles;
+
+  const results = jobTitles.map((title) => {
+    const jobData = JOB_SKILLS_DB[title];
+    const reqSkills = jobData.skills.map(s => s.toLowerCase());
+    const has = jobData.skills.filter(s => studentSkills.some(us => s.toLowerCase().includes(us) || us.includes(s.toLowerCase())));
+    const missing = jobData.skills.filter(s => !studentSkills.some(us => s.toLowerCase().includes(us) || us.includes(s.toLowerCase())));
+    const match = Math.min(95, Math.max(15, Math.round((has.length / reqSkills.length) * 100)));
     return {
-      ...j,
-      requiredSkills: j.skills,
+      title,
+      experience: jobData.experience,
+      salaryINR: jobData.salaryINR,
+      salaryUSD: jobData.salaryUSD,
+      matchPercentage: match,
+      skills: jobData.skills,
       studentSkills: has,
       missingSkills: missing,
-      matchPercentage: Math.min(95, Math.max(30, 50 + has.length * 10 - missing.length * 5)),
-      whyMatch: `Your ${has.slice(0, 2).join(" & ") || "skills"} align well with this role`,
+      links: JOB_LINKS(title),
+      learning: jobData.learning,
+      estTime: jobData.estTime,
+      whyMatch: has.length > 0 ? `You have ${has.slice(0, 2).join(" & ")} — great foundation! Add ${missing.slice(0, 2).join(" & ")} to qualify.` : `This role needs ${reqSkills.slice(0, 3).join(", ")}. Start learning these!`,
     };
   });
+
+  return results;
+};
+
+export const getInternships = async (profile) => {
+  const internships = [
+    { title: "Software Development Intern", stipendINR: "15K-30K/month", duration: "3-6 months", type: "Full Time", skillsGained: ["React", "Node.js", "Git", "REST APIs"], links: JOB_LINKS("software development intern") },
+    { title: "Data Science Intern", stipendINR: "20K-40K/month", duration: "3-6 months", type: "Full Time", skillsGained: ["Python", "ML", "SQL", "Statistics"], links: JOB_LINKS("data science intern") },
+    { title: "Frontend Intern", stipendINR: "10K-25K/month", duration: "3 months", type: "Full Time", skillsGained: ["React", "CSS", "JavaScript", "TypeScript"], links: JOB_LINKS("frontend intern") },
+    { title: "Backend Intern", stipendINR: "15K-30K/month", duration: "3-6 months", type: "Full Time", skillsGained: ["Node.js", "SQL", "Python", "Docker"], links: JOB_LINKS("backend intern") },
+    { title: "AI/ML Intern", stipendINR: "25K-50K/month", duration: "6 months", type: "Full Time", skillsGained: ["Python", "TensorFlow", "PyTorch", "ML"], links: JOB_LINKS("machine learning intern") },
+    { title: "DevOps Intern", stipendINR: "20K-35K/month", duration: "6 months", type: "Full Time", skillsGained: ["Docker", "AWS", "Linux", "CI/CD"], links: JOB_LINKS("devops intern") },
+  ];
+  return internships;
 };
 
 // ----- DAILY CHALLENGE (NEW) -----
@@ -374,41 +458,71 @@ Topics should be specific technical skills related to their target career. Inclu
   return allTopics.slice(0, 10);
 };
 
-// ----- SKILL QUIZ (10 questions) -----
-export const getSkillQuiz = async (topic, difficulty, studentSkills) => {
-  const prompt = `${SYSTEM_PROMPT}
-Generate 10 multiple choice questions for topic: ${topic}
+// ----- SKILL QUIZ (10 questions - REAL Gemini only, no placeholders) -----
+export async function generateQuizQuestions(topic, difficulty, studentSkills) {
+  const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  const prompt = `Generate 10 multiple choice questions for:
+Topic: ${topic}
 Difficulty: ${difficulty}
-Student level: ${studentSkills || "Beginner"}
+Student skills: ${studentSkills}
 
-Never repeat the same questions. Each call must return different questions.
-
-Return ONLY a valid JSON array like this (no markdown, no extra text):
+Return ONLY a valid JSON array, no markdown, no backticks:
 [
   {
-    "question": "question text here",
-    "options": ["A) option1", "B) option2", "C) option3", "D) option4"],
+    "question": "actual question here?",
+    "options": ["correct or wrong answer", "wrong answer", "wrong answer", "wrong answer"],
     "correct": 0,
     "explanation": "why this answer is correct"
   }
 ]
-The "correct" field is the index of the correct option (0, 1, 2, or 3).`;
+Make questions specific, technical and educational.
+Difficulty ${difficulty} means:
+- Beginner: basic concepts
+- Intermediate: practical usage
+- Advanced: complex scenarios
+- Extreme: expert level edge cases`;
 
-  const text = await callGemini(prompt, 0.9);
-  if (text) {
-    const parsed = parseJSON(text, null);
-    if (Array.isArray(parsed) && parsed.length === 10) return parsed;
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch (err) {
+    console.warn("Quiz generation failed, retrying with fallback prompt:", err.message);
+    const text = await callGemini(prompt, 0.9);
+    if (text) {
+      const parsed = parseJSON(text, null);
+      if (Array.isArray(parsed) && parsed.length === 10) return parsed;
+    }
+    throw new Error("Failed to generate quiz questions");
   }
-  const fallback = [];
-  for (let i = 0; i < 10; i++) {
-    fallback.push({
-      question: `Sample ${topic} question ${i + 1} about ${difficulty} concepts?`,
-      options: ["A) Option A", "B) Option B", "C) Option C", "D) Option D"],
-      correct: 0,
-      explanation: `This is a ${difficulty} level question about ${topic}.`,
-    });
+}
+
+// ----- IMAGE OCR (Resume text from image) -----
+const fileToBase64 = (file) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.readAsDataURL(file);
+  });
+};
+
+export const extractTextFromImage = async (imageFile) => {
+  try {
+    const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const base64 = await fileToBase64(imageFile);
+    const result = await model.generateContent([
+      { inlineData: { data: base64, mimeType: imageFile.type } },
+      "Extract all text from this resume image. Return only the extracted text, no extra commentary."
+    ]);
+    return result.response.text();
+  } catch (err) {
+    console.warn("Image OCR failed:", err.message);
+    return null;
   }
-  return fallback;
 };
 
 // ----- LEARNING PATH (NEW) -----

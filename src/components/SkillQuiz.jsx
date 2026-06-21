@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrainCircuit, Loader2, Clock, CheckCircle, XCircle, Award, RefreshCw, Star, Trophy, Zap, ArrowRight, ChevronLeft, Medal, Sparkles, Target } from 'lucide-react';
-import { getQuizTopics, getSkillQuiz } from '../services/geminiService';
+import { getQuizTopics, generateQuizQuestions } from '../services/geminiService';
 
 const DIFFICULTIES = [
   { id: 'Beginner', icon: '🟢', color: 'green' },
@@ -73,7 +73,9 @@ const SkillQuiz = ({ career, profile, toast, onComplete }) => {
     setLoading(true);
     const profileData = profile || { skills: career, targetCareer: career };
     const t = await getQuizTopics(profileData);
-    setTopics(t.length >= 4 ? t : ['Python', 'JavaScript', 'Data Structures', 'SQL', 'React', 'System Design', 'Git', 'Algorithms']);
+    const skillsFromProfile = (profile?.skills || career || "").split(",").map(s => s.trim()).filter(Boolean);
+    const fallbackTopics = skillsFromProfile.length >= 4 ? skillsFromProfile : ['Python', 'JavaScript', 'Data Structures', 'SQL', 'React', 'System Design', 'Git', 'Algorithms'];
+    setTopics(t.length >= 4 ? t : fallbackTopics);
     setLoading(false);
   };
 
@@ -82,7 +84,7 @@ const SkillQuiz = ({ career, profile, toast, onComplete }) => {
     setSelectedDifficulty(difficulty);
     setQuestionLoading(true);
     setQuizStarted(false);
-    const qs = await getSkillQuiz(topic, difficulty, career);
+    const qs = await generateQuizQuestions(topic, difficulty, career);
     setQuestions(qs);
     setCurrentIdx(0);
     setSelected(null);

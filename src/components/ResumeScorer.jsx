@@ -1,18 +1,34 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Upload, CheckCircle, XCircle, TrendingUp, Loader2, AlertTriangle, Sparkles, BarChart3, Target, Award, File, X } from 'lucide-react';
-import { getResumeScore } from '../services/geminiService';
+import { FileText, Upload, CheckCircle, XCircle, TrendingUp, Loader2, AlertTriangle, Sparkles, BarChart3, Target, Award, File, FileImage, FileSearch, X } from 'lucide-react';
+import { getResumeScore, extractTextFromImage } from '../services/geminiService';
 
 function extractFileType(name) {
   const ext = name.split('.').pop().toLowerCase();
-  if (ext === 'pdf') return 'pdf';
-  if (['doc', 'docx'].includes(ext)) return 'docx';
+  if (ext === 'pdf') return { type: 'pdf', icon: 'pdf' };
+  if (['doc', 'docx'].includes(ext)) return { type: 'docx', icon: 'doc' };
+  if (['jpg', 'jpeg', 'png'].includes(ext)) return { type: 'image', icon: 'image' };
+  if (ext === 'txt') return { type: 'txt', icon: 'txt' };
   return null;
 }
 
+const FileIcon = ({ fileType }) => {
+  if (fileType === 'pdf' || fileType === 'doc') return <File size={20} className="text-blue-400" />;
+  if (fileType === 'image') return <FileImage size={20} className="text-green-400" />;
+  if (fileType === 'txt') return <FileSearch size={20} className="text-yellow-400" />;
+  return <File size={20} className="text-gray-400" />;
+};
+
 async function extractTextFromFile(file) {
-  const type = extractFileType(file.name);
+  const info = extractFileType(file.name);
+  if (!info) return null;
+  const type = info.type;
   const buffer = await file.arrayBuffer();
+
+  if (type === 'txt') {
+    const decoder = new TextDecoder('utf-8');
+    return decoder.decode(buffer);
+  }
 
   if (type === 'pdf') {
     try {
@@ -43,6 +59,16 @@ async function extractTextFromFile(file) {
     }
   }
 
+  if (type === 'image') {
+    try {
+      const text = await extractTextFromImage(file);
+      return text || null;
+    } catch (e) {
+      console.warn('Image OCR failed:', e);
+      return null;
+    }
+  }
+
   return null;
 }
 
@@ -56,14 +82,17 @@ const ResumeScorer = ({ career, toast }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef(null);
 
+  const [fileType, setFileType] = useState(null);
+
   const handleFile = useCallback(async (file) => {
     if (!file) return;
-    const type = extractFileType(file.name);
-    if (!type) {
-      if (toast) toast('Please upload a PDF or DOCX file', 'error');
+    const info = extractFileType(file.name);
+    if (!info) {
+      if (toast) toast('Please upload a PDF, DOCX, image (JPG/PNG), or TXT file', 'error');
       return;
     }
     setFileName(file.name);
+    setFileType(info.icon);
     setUploading(true);
     setUploadProgress(0);
 
@@ -132,7 +161,7 @@ const ResumeScorer = ({ career, toast }) => {
           </div>
         ) : fileName ? (
           <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-            <File size={20} className="text-blue-400" />
+            <FileIcon fileType={fileType} />
             <div className="flex-1 min-w-0">
               <p className="text-sm text-blue-300 truncate">{fileName}</p>
               <p className="text-xs text-gray-500">{resumeText.split(/\s+/).length} words extracted</p>
@@ -151,8 +180,8 @@ const ResumeScorer = ({ career, toast }) => {
           >
             <Upload size={36} className={`mx-auto mb-3 ${dragOver ? 'text-blue-400' : 'text-gray-500'}`} />
             <p className="text-sm text-gray-400 mb-1">Drag & drop your resume here</p>
-            <p className="text-xs text-gray-500">Supports PDF, DOC, DOCX</p>
-            <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" onChange={(e) => handleFile(e.target.files[0])} className="hidden" />
+            <p className="text-xs text-gray-500">Supports PDF, DOCX, JPG/PNG, TXT</p>
+            <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt" onChange={(e) => handleFile(e.target.files[0])} className="hidden" />
           </div>
         )}
 
