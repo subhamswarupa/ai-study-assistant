@@ -346,31 +346,69 @@ Return ONLY valid JSON (no markdown):
   return challenges[Math.floor(Math.random() * challenges.length)];
 };
 
-// ----- SKILL QUIZ (NEW: 5 MCQs) -----
-export const getSkillQuiz = async (career) => {
+// ----- SKILL QUIZ TOPICS -----
+export const getQuizTopics = async (profile) => {
   const prompt = `${SYSTEM_PROMPT}
-Generate 5 multiple-choice quiz questions testing knowledge for a ${career} intern position.
+Based on this student's profile, generate 8-10 relevant quiz topic names.
 
-Each question must be DIFFERENT every time this is called. Never repeat questions.
+Profile: ${JSON.stringify(profile, null, 2)}
 
-Return ONLY valid JSON array (no markdown):
-[{ "id": 1, "question": "...", "options": ["A) ...", "B) ...", "C) ...", "D) ..."], "correctAnswer": "A|B|C|D", "explanation": "..." }]`;
+Return ONLY a JSON array of topic names (strings only, no objects):
+["Topic1", "Topic2", ...]
+
+Topics should be specific technical skills related to their target career. Include a mix of their known skills and skills they need to learn.`;
   const text = await callGemini(prompt, 0.9);
   if (text) {
     const parsed = parseJSON(text, null);
-    if (Array.isArray(parsed) && parsed.length === 5) return parsed;
+    if (Array.isArray(parsed) && parsed.length >= 4) return parsed;
   }
-  const careerKey = findCareer(career);
-  const quizzes = {
-    "software developer": [
-      { id: 1, question: "What does the 'this' keyword refer to in a JavaScript arrow function?", options: ["A) The global object", "B) The enclosing lexical context", "C) The function itself", "D) undefined"], correctAnswer: "B", explanation: "Arrow functions don't have their own 'this' — they inherit from the enclosing scope." },
-      { id: 2, question: "Which HTTP status code indicates a resource has been created?", options: ["A) 200 OK", "B) 201 Created", "C) 204 No Content", "D) 301 Moved"], correctAnswer: "B", explanation: "201 Created is returned when a new resource is successfully created." },
-      { id: 3, question: "What is the time complexity of accessing an element in an array by index?", options: ["A) O(1)", "B) O(log n)", "C) O(n)", "D) O(n^2)"], correctAnswer: "A", explanation: "Array access by index is O(1) — direct memory addressing." },
-      { id: 4, question: "Which React hook is used for side effects?", options: ["A) useState", "B) useEffect", "C) useContext", "D) useReducer"], correctAnswer: "B", explanation: "useEffect is the primary hook for side effects like API calls and subscriptions." },
-      { id: 5, question: "What does ACID stand for in databases?", options: ["A) Atomicity, Consistency, Isolation, Durability", "B) Availability, Consistency, Isolation, Durability", "C) Atomicity, Consistency, Integrity, Durability", "D) Atomicity, Concurrency, Isolation, Durability"], correctAnswer: "A", explanation: "ACID ensures reliable database transactions through Atomicity, Consistency, Isolation, and Durability." },
-    ],
+  const skills = (profile.skills || "").split(",").map(s => s.trim()).filter(Boolean);
+  const careerKey = findCareer(profile.targetCareer);
+  const defaultTopics = {
+    "software developer": ["JavaScript", "Python", "React", "Data Structures", "SQL", "System Design", "Git", "Node.js", "CSS", "TypeScript"],
+    "ai engineer": ["Python", "Machine Learning", "Deep Learning", "Data Structures", "SQL", "Statistics", "NLP", "Computer Vision", "TensorFlow", "PyTorch"],
+    "data analyst": ["SQL", "Python", "Statistics", "Excel", "Data Visualization", "Tableau", "Power BI", "Data Cleaning"],
   };
-  return quizzes[careerKey] || quizzes["software developer"];
+  const topics = defaultTopics[careerKey] || defaultTopics["software developer"];
+  const allTopics = [...new Set([...skills, ...topics])];
+  return allTopics.slice(0, 10);
+};
+
+// ----- SKILL QUIZ (10 questions) -----
+export const getSkillQuiz = async (topic, difficulty, studentSkills) => {
+  const prompt = `${SYSTEM_PROMPT}
+Generate 10 multiple choice questions for topic: ${topic}
+Difficulty: ${difficulty}
+Student level: ${studentSkills || "Beginner"}
+
+Never repeat the same questions. Each call must return different questions.
+
+Return ONLY a valid JSON array like this (no markdown, no extra text):
+[
+  {
+    "question": "question text here",
+    "options": ["A) option1", "B) option2", "C) option3", "D) option4"],
+    "correct": 0,
+    "explanation": "why this answer is correct"
+  }
+]
+The "correct" field is the index of the correct option (0, 1, 2, or 3).`;
+
+  const text = await callGemini(prompt, 0.9);
+  if (text) {
+    const parsed = parseJSON(text, null);
+    if (Array.isArray(parsed) && parsed.length === 10) return parsed;
+  }
+  const fallback = [];
+  for (let i = 0; i < 10; i++) {
+    fallback.push({
+      question: `Sample ${topic} question ${i + 1} about ${difficulty} concepts?`,
+      options: ["A) Option A", "B) Option B", "C) Option C", "D) Option D"],
+      correct: 0,
+      explanation: `This is a ${difficulty} level question about ${topic}.`,
+    });
+  }
+  return fallback;
 };
 
 // ----- LEARNING PATH (NEW) -----

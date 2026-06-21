@@ -279,7 +279,7 @@ const Dashboard = ({ profileData, report, onBack, user, activeSection }) => {
     ),
     quiz: (
       <Suspense fallback={<div className="text-center py-12"><Loader2 className="animate-spin mx-auto mb-2 text-blue-400" size={32} /><p className="text-gray-400 text-sm">Loading skill quiz...</p></div>}>
-        <SkillQuiz career={profileData?.targetCareer} toast={toast} onComplete={(pct) => pct === 100 && unlockBadge('quiz')} />
+        <SkillQuiz career={profileData?.targetCareer} profile={profileData} toast={toast} onComplete={(pct) => pct === 100 && unlockBadge('quiz')} />
       </Suspense>
     ),
     jobs: (

@@ -42,6 +42,7 @@ What would you like to work on?` }
   ]);
   const chatRef = useRef(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [listening, setListening] = useState(false);
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
@@ -97,6 +98,28 @@ What would you like to work on?` }
     a.download = `chat-${new Date().toISOString().slice(0, 10)}.txt`;
     a.click();
     URL.revokeObjectURL(a.href);
+  };
+
+  const startListening = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) { toast('Speech recognition not supported in your browser', 'error'); return; }
+    if (listening) { setListening(false); return; }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(transcript);
+      setListening(false);
+    };
+    recognition.onerror = (event) => {
+      console.error('Speech error:', event.error);
+      setListening(false);
+    };
+    recognition.onend = () => setListening(false);
+    recognition.start();
+    setListening(true);
   };
 
   const formatMessage = (text) => {
@@ -220,7 +243,9 @@ What would you like to work on?` }
 
             <div className="p-4 border-t border-white/10">
               <div className="flex gap-2">
-                <button className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-white/50 hover:text-white/70 transition" title="Voice input">
+                <button onClick={startListening}
+                  className={`p-2.5 rounded-xl border transition ${listening ? 'bg-red-500/20 border-red-500/50 text-red-400 animate-pulse' : 'bg-white/5 border-white/10 text-white/50 hover:text-white/70'}`}
+                  title={listening ? 'Listening...' : 'Voice input'}>
                   <Mic size={18} />
                 </button>
                 <input value={input} onChange={(e) => setInput(e.target.value)}
