@@ -500,29 +500,39 @@ Difficulty ${difficulty} means:
   }
 }
 
-// ----- IMAGE OCR (Resume text from image) -----
-const fileToBase64 = (file) => {
-  return new Promise((resolve) => {
+// ----- IMAGE OCR (Resume text from image — uses FileReader + Gemini Vision) -----
+export const extractTextFromImage = (file) => {
+  const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onload = async (e) => {
+      try {
+        const base64Data = e.target.result.split(',')[1];
+        const mimeType = file.type;
+
+        const result = await model.generateContent([
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType: mimeType
+            }
+          },
+          `This is a resume image.
+           Extract ALL text from it completely.
+           Include every word, number, date, skill.
+           Return only the extracted text, nothing else.`
+        ]);
+
+        resolve(result.response.text());
+      } catch (error) {
+        reject(error);
+      }
+    };
+    reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-};
-
-export const extractTextFromImage = async (imageFile) => {
-  try {
-    const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const base64 = await fileToBase64(imageFile);
-    const result = await model.generateContent([
-      { inlineData: { data: base64, mimeType: imageFile.type } },
-      "Extract all text from this resume image. Return only the extracted text, no extra commentary."
-    ]);
-    return result.response.text();
-  } catch (err) {
-    console.warn("Image OCR failed:", err.message);
-    return null;
-  }
 };
 
 // ----- LEARNING PATH (NEW) -----

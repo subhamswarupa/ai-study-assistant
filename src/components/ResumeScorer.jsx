@@ -7,7 +7,7 @@ function extractFileType(name) {
   const ext = name.split('.').pop().toLowerCase();
   if (ext === 'pdf') return { type: 'pdf', icon: 'pdf' };
   if (['doc', 'docx'].includes(ext)) return { type: 'docx', icon: 'doc' };
-  if (['jpg', 'jpeg', 'png'].includes(ext)) return { type: 'image', icon: 'image' };
+  if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) return { type: 'image', icon: 'image' };
   if (ext === 'txt') return { type: 'txt', icon: 'txt' };
   return null;
 }
@@ -23,33 +23,19 @@ async function extractTextFromFile(file) {
   const info = extractFileType(file.name);
   if (!info) return null;
   const type = info.type;
-  const buffer = await file.arrayBuffer();
 
   if (type === 'txt') {
-    const decoder = new TextDecoder('utf-8');
-    return decoder.decode(buffer);
-  }
-
-  if (type === 'pdf') {
-    try {
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-      const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-      let text = '';
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        text += content.items.map(item => item.str).join(' ') + '\n';
-      }
-      return text;
-    } catch (e) {
-      console.warn('PDF extraction failed:', e);
-      return null;
-    }
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
   }
 
   if (type === 'docx') {
     try {
+      const buffer = await file.arrayBuffer();
       const mammoth = await import('mammoth');
       const result = await mammoth.extractRawText({ arrayBuffer: buffer });
       return result.value || null;
@@ -59,12 +45,12 @@ async function extractTextFromFile(file) {
     }
   }
 
-  if (type === 'image') {
+  if (type === 'pdf' || type === 'image') {
     try {
       const text = await extractTextFromImage(file);
       return text || null;
     } catch (e) {
-      console.warn('Image OCR failed:', e);
+      console.warn('PDF/Image extraction failed:', e);
       return null;
     }
   }
@@ -109,7 +95,7 @@ const ResumeScorer = ({ career, toast }) => {
       setResumeText(text);
       if (toast) toast(`Extracted ${text.split(/\s+/).length} words from ${file.name}`, 'success');
     } else {
-      if (toast) toast('Could not extract text. Try pasting manually.', 'error');
+      if (toast) toast('Could not read this file. Please try a clearer image or paste your resume text below.', 'error');
     }
 
     setTimeout(() => { setUploading(false); setUploadProgress(0); }, 500);
@@ -180,25 +166,23 @@ const ResumeScorer = ({ career, toast }) => {
           >
             <Upload size={36} className={`mx-auto mb-3 ${dragOver ? 'text-blue-400' : 'text-gray-500'}`} />
             <p className="text-sm text-gray-400 mb-1">Drag & drop your resume here</p>
-            <p className="text-xs text-gray-500">Supports PDF, DOCX, JPG/PNG, TXT</p>
-            <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt" onChange={(e) => handleFile(e.target.files[0])} className="hidden" />
+            <p className="text-xs text-gray-500">Supports PDF, DOCX, JPG/PNG/WEBP, TXT</p>
+            <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.txt" onChange={(e) => handleFile(e.target.files[0])} className="hidden" />
           </div>
         )}
 
-        {!fileName && !uploading && (
-          <>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-gray-700" />
-              <span className="text-xs text-gray-500">or paste manually</span>
-              <div className="flex-1 h-px bg-gray-700" />
-            </div>
-            <textarea value={resumeText} onChange={(e) => setResumeText(e.target.value)}
-              placeholder="Paste your resume content here..."
-              rows={5}
-              className="w-full p-4 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 outline-none focus:border-blue-500/50 transition text-sm resize-none font-mono"
-            />
-          </>
-        )}
+        <>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-gray-700" />
+            <span className="text-xs text-gray-500">or paste manually</span>
+            <div className="flex-1 h-px bg-gray-700" />
+          </div>
+          <textarea value={resumeText} onChange={(e) => setResumeText(e.target.value)}
+            placeholder="Paste your resume content here..."
+            rows={5}
+            className="w-full p-4 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 outline-none focus:border-blue-500/50 transition text-sm resize-none font-mono"
+          />
+        </>
 
         <button onClick={handleAnalyze} disabled={!resumeText.trim() || loading}
           className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium hover:shadow-lg disabled:opacity-50 transition flex items-center justify-center gap-2">
