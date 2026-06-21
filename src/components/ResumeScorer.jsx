@@ -36,13 +36,15 @@ const extractTextFromImage = async (file) => {
     body: JSON.stringify({
       contents: [{
         parts: [
-          { inline_data: { mime_type: file.type, data: base64 } },
+          { inlineData: { mimeType: file.type, data: base64 } },
           { text: "This is a resume. Extract ALL text from it. Return only the plain text, nothing else." }
         ]
       }]
     })
   });
   const data = await response.json();
+  if (data.error) throw new Error(data.error.message || 'Image processing failed');
+  if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error('Could not extract text from image');
   return data.candidates[0].content.parts[0].text;
 };
 
@@ -92,13 +94,8 @@ async function extractTextFromFile(file) {
   }
 
   if (type === 'image') {
-    try {
-      const text = await extractTextFromImage(file);
-      return text || null;
-    } catch (e) {
-      console.warn('Image OCR failed:', e);
-      return null;
-    }
+    const text = await extractTextFromImage(file);
+    return text || null;
   }
 
   return null;
@@ -164,7 +161,16 @@ const ResumeScorer = ({ career, toast }) => {
     setResult(null);
     setStep('extracting');
 
-    const text = await extractTextFromFile(file);
+    let text;
+    try {
+      text = await extractTextFromFile(file);
+    } catch (e) {
+      console.warn('Extraction error:', e);
+      setStep(null);
+      setFileName('');
+      if (toast) toast(e.message || 'Could not read this file. Please try a clearer image or paste your resume text below.', 'error');
+      return;
+    }
 
     if (text && text.trim().length > 20) {
       setResumeText(text);
