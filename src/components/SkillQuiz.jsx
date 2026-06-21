@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BrainCircuit, Loader2, Clock, CheckCircle, XCircle, Award, RefreshCw, Star, Trophy, Zap, ArrowRight, ChevronLeft, Medal, Sparkles, Target } from 'lucide-react';
-import { getQuizTopics, generateQuizQuestions } from '../services/geminiService';
+import { BrainCircuit, Loader2, Clock, CheckCircle, XCircle, Award, RefreshCw, Star, Trophy, Zap, ArrowRight, ChevronLeft, Medal, Sparkles, Target, AlertTriangle } from 'lucide-react';
+import { getQuizTopics } from '../services/geminiService';
 
 const DIFFICULTIES = [
   { id: 'Beginner', icon: '🟢', color: 'green' },
@@ -56,7 +56,57 @@ const SkillQuiz = ({ career, profile, toast, onComplete }) => {
   const [startTime, setStartTime] = useState(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [questionLoading, setQuestionLoading] = useState(false);
+  const [questionError, setQuestionError] = useState(null);
   const confettiCanvas = useRef(null);
+
+  const generateQuestions = async (topic, difficulty) => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: `Generate exactly 10 multiple choice questions for:
+Topic: ${topic}
+Difficulty: ${difficulty}
+
+Return ONLY a valid JSON array, no markdown, no backticks, no explanation:
+[
+  {
+    "question": "What is...?",
+    "options": ["Answer A", "Answer B", "Answer C", "Answer D"],
+    "correct": 0,
+    "explanation": "Because..."
+  }
+]
+Make all 10 questions real, specific and educational.
+correct is the index (0,1,2,3) of the correct answer in options array.`
+              }]
+            }]
+          })
+        }
+      );
+
+      clearTimeout(timeoutId);
+      const data = await response.json();
+      const text = data.candidates[0].content.parts[0].text;
+      const cleaned = text
+        .replace(/```json/g, '')
+        .replace(/```/g, '')
+        .trim();
+      return JSON.parse(cleaned);
+    } catch (error) {
+      console.error('Quiz generation error:', error);
+      throw error;
+    }
+  };
 
   useEffect(() => {
     loadTopics();
@@ -83,23 +133,30 @@ const SkillQuiz = ({ career, profile, toast, onComplete }) => {
     setSelectedTopic(topic);
     setSelectedDifficulty(difficulty);
     setQuestionLoading(true);
+    setQuestionError(null);
     setQuizStarted(false);
-    const qs = await generateQuizQuestions(topic, difficulty, career);
-    setQuestions(qs);
-    setCurrentIdx(0);
-    setSelected(null);
-    setShowResult(false);
-    setFinished(false);
-    setScore(0);
-    setBonus(0);
-    setStreak(0);
-    setMaxStreak(0);
-    setAnswers([]);
-    setTimer(30);
-    setStartTime(Date.now());
-    setShowConfetti(false);
-    setQuestionLoading(false);
-    setQuizStarted(true);
+    try {
+      const qs = await generateQuestions(topic, difficulty);
+      if (!qs || qs.length !== 10) throw new Error('Invalid response');
+      setQuestions(qs);
+      setCurrentIdx(0);
+      setSelected(null);
+      setShowResult(false);
+      setFinished(false);
+      setScore(0);
+      setBonus(0);
+      setStreak(0);
+      setMaxStreak(0);
+      setAnswers([]);
+      setTimer(30);
+      setStartTime(Date.now());
+      setShowConfetti(false);
+      setQuestionLoading(false);
+      setQuizStarted(true);
+    } catch (e) {
+      setQuestionLoading(false);
+      setQuestionError('Could not generate questions. Please try again.');
+    }
   };
 
   const handleTimeout = () => {
@@ -230,6 +287,22 @@ const SkillQuiz = ({ career, profile, toast, onComplete }) => {
         <Loader2 className="animate-spin mx-auto mb-4 text-blue-400" size={36} />
         <p className="text-gray-400">Generating {selectedDifficulty} questions about {selectedTopic}...</p>
       </div>
+    );
+  }
+
+  if (questionError) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-16 max-w-md mx-auto">
+        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-red-500/20 flex items-center justify-center">
+          <AlertTriangle size={28} className="text-red-400" />
+        </div>
+        <p className="text-gray-300 font-medium mb-2">Question generation failed</p>
+        <p className="text-sm text-gray-500 mb-6">{questionError}</p>
+        <button onClick={() => startQuizForTopic(selectedTopic, selectedDifficulty)}
+          className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium hover:shadow-lg transition flex items-center gap-2 mx-auto">
+          <RefreshCw size={16} /> Try Again
+        </button>
+      </motion.div>
     );
   }
 

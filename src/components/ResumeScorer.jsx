@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Upload, CheckCircle, XCircle, TrendingUp, Loader2, AlertTriangle, Sparkles, BarChart3, Target, Award, File, FileImage, FileSearch, X } from 'lucide-react';
-import { getResumeScore, extractTextFromImage } from '../services/geminiService';
+import { getResumeScore } from '../services/geminiService';
 
 function extractFileType(name) {
   const ext = name.split('.').pop().toLowerCase();
@@ -17,6 +17,38 @@ const FileIcon = ({ fileType }) => {
   if (fileType === 'image') return <FileImage size={20} className="text-green-400" />;
   if (fileType === 'txt') return <FileSearch size={20} className="text-yellow-400" />;
   return <File size={20} className="text-gray-400" />;
+};
+
+const extractFromImage = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      try {
+        const base64 = reader.result.split(',')[1];
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { inline_data: { mime_type: file.type, data: base64 } },
+                  { text: "Extract all text from this resume image. Return only the plain text content." }
+                ]
+              }]
+            })
+          }
+        );
+        const data = await response.json();
+        const text = data.candidates[0].content.parts[0].text;
+        resolve(text);
+      } catch (e) {
+        reject(e);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
 };
 
 async function extractTextFromFile(file) {
@@ -45,12 +77,31 @@ async function extractTextFromFile(file) {
     }
   }
 
-  if (type === 'pdf' || type === 'image') {
+  if (type === 'pdf') {
     try {
-      const text = await extractTextFromImage(file);
+      const buffer = await file.arrayBuffer();
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+      const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+      let text = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(item => item.str).join(' ') + '\n';
+      }
+      return text;
+    } catch (e) {
+      console.warn('PDF extraction failed:', e);
+      return null;
+    }
+  }
+
+  if (type === 'image') {
+    try {
+      const text = await extractFromImage(file);
       return text || null;
     } catch (e) {
-      console.warn('PDF/Image extraction failed:', e);
+      console.warn('Image OCR failed:', e);
       return null;
     }
   }

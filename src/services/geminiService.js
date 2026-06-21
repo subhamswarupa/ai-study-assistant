@@ -458,82 +458,9 @@ Topics should be specific technical skills related to their target career. Inclu
   return allTopics.slice(0, 10);
 };
 
-// ----- SKILL QUIZ (10 questions - REAL Gemini only, no placeholders) -----
-export async function generateQuizQuestions(topic, difficulty, studentSkills) {
-  const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+// ----- SKILL QUIZ removed — now handled directly in SkillQuiz.jsx -----
 
-  const prompt = `Generate 10 multiple choice questions for:
-Topic: ${topic}
-Difficulty: ${difficulty}
-Student skills: ${studentSkills}
-
-Return ONLY a valid JSON array, no markdown, no backticks:
-[
-  {
-    "question": "actual question here?",
-    "options": ["correct or wrong answer", "wrong answer", "wrong answer", "wrong answer"],
-    "correct": 0,
-    "explanation": "why this answer is correct"
-  }
-]
-Make questions specific, technical and educational.
-Difficulty ${difficulty} means:
-- Beginner: basic concepts
-- Intermediate: practical usage
-- Advanced: complex scenarios
-- Extreme: expert level edge cases`;
-
-  try {
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
-    const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(cleaned);
-  } catch (err) {
-    console.warn("Quiz generation failed, retrying with fallback prompt:", err.message);
-    const text = await callGemini(prompt, 0.9);
-    if (text) {
-      const parsed = parseJSON(text, null);
-      if (Array.isArray(parsed) && parsed.length === 10) return parsed;
-    }
-    throw new Error("Failed to generate quiz questions");
-  }
-}
-
-// ----- IMAGE OCR (Resume text from image — uses FileReader + Gemini Vision) -----
-export const extractTextFromImage = (file) => {
-  const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const base64Data = e.target.result.split(',')[1];
-        const mimeType = file.type;
-
-        const result = await model.generateContent([
-          {
-            inlineData: {
-              data: base64Data,
-              mimeType: mimeType
-            }
-          },
-          `This is a resume image.
-           Extract ALL text from it completely.
-           Include every word, number, date, skill.
-           Return only the extracted text, nothing else.`
-        ]);
-
-        resolve(result.response.text());
-      } catch (error) {
-        reject(error);
-      }
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-};
+// ----- IMAGE OCR removed — now handled directly in ResumeScorer.jsx -----
 
 // ----- LEARNING PATH (NEW) -----
 export const getLearningPath = async (career) => {
