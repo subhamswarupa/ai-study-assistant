@@ -12,6 +12,7 @@ import LearningPathTracker from './LearningPathTracker';
 const InterviewSimulator = lazy(() => import('./InterviewSimulator'));
 const ResumeScorer = lazy(() => import('./ResumeScorer'));
 const JobMatchFinder = lazy(() => import('./JobMatchFinder'));
+const InterviewBank = lazy(() => import('./InterviewBank'));
 
 const GlassCard = ({ title, icon: Icon, children, className = "", delay = 0 }) => (
   <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
@@ -274,6 +275,11 @@ const Dashboard = ({ profileData, report, onBack, user, activeSection }) => {
     resume: (
       <Suspense fallback={<div className="text-center py-12"><Loader2 className="animate-spin mx-auto mb-2 text-blue-400" size={32} /><p className="text-gray-400 text-sm">Loading resume analyzer...</p></div>}>
         <ResumeScorer career={profileData?.targetCareer} toast={toast} onComplete={() => unlockBadge('resume')} />
+      </Suspense>
+    ),
+    'interview-bank': (
+      <Suspense fallback={<div className="text-center py-12"><Loader2 className="animate-spin mx-auto mb-2 text-blue-400" size={32} /><p className="text-gray-400 text-sm">Loading interview bank...</p></div>}>
+        <InterviewBank toast={toast} />
       </Suspense>
     ),
     jobs: (

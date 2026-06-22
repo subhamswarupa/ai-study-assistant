@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Target, BookOpen, Clock, Mic, FileText, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Target, BookOpen, Clock, Mic, FileText, Briefcase, Library } from 'lucide-react';
 
 const sections = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -9,6 +9,7 @@ const sections = [
   { id: 'roadmap', label: 'Roadmap', icon: Clock },
   { id: 'interview', label: 'Interview Simulator', icon: Mic },
   { id: 'resume', label: 'Resume Score', icon: FileText },
+  { id: 'interview-bank', label: 'Interview Bank', icon: Library },
   { id: 'jobs', label: 'Job Matches', icon: Briefcase },
 ];
 
