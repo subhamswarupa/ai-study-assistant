@@ -130,6 +130,15 @@ Additional career paths are handled by the Gemini AI model dynamically.
 4. **Chat with your Career Coach** — ask about projects, study plans, AWS, career matching
 5. **Save & export** — reports auto-save, export as PDF anytime
 
-## PDF Export
+## Screenshots
 
-The "Download Success Plan" button captures the entire dashboard and generates a multi-page PDF with a title page and all sections.
+### Dashboard
+<img width="1600" height="756" alt="image" src="https://github.com/user-attachments/assets/e0d899df-fddc-44bd-8765-c8ebe7986a75" />
+
+
+### Resume check
+<img width="1600" height="755" alt="image" src="https://github.com/user-attachments/assets/404c0e8d-27c4-424b-9067-10570857d50b" />
+
+### Interview Bank
+<img width="1600" height="760" alt="image" src="https://github.com/user-attachments/assets/fd91f7f2-b723-4ace-a552-814e9aebf674" />
+
