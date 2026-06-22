@@ -3,6 +3,25 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
+const CACHE_TTL = 24 * 60 * 60 * 1000;
+
+function getCached(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    if (Date.now() - ts < CACHE_TTL) return data;
+    localStorage.removeItem(key);
+  } catch {}
+  return null;
+}
+
+function setCache(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() }));
+  } catch {}
+}
+
 function getModel() {
   return apiKey ? genAI.getGenerativeModel({ model: "gemini-2.0-flash" }) : null;
 }
@@ -19,11 +38,20 @@ CORE RULES:
 • Keep responses concise and actionable.`;
 
 async function callGemini(prompt, temperature = 0.7) {
+  const cacheKey = 'gemini_cache_' + btoa(prompt.slice(0, 200)).replace(/[/+=]/g, '_') + '_' + temperature;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
   const model = getModel();
   if (!model) return null;
   try {
-    const result = await model.generateContent({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature } });
-    return result.response.text().replace(/```json\n?|\n?```/g, "").trim();
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { temperature, maxOutputTokens: 500 }
+    });
+    const text = result.response.text().replace(/```json\n?|\n?```/g, "").trim();
+    setCache(cacheKey, text);
+    return text;
   } catch (err) {
     console.warn("Gemini API call failed:", err.message);
     return null;

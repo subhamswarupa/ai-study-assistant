@@ -26,9 +26,15 @@ const PageSkeleton = () => (
 function AppContent() {
   const toast = useToast();
   const [page, setPage] = useState('landing');
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [report, setReport] = useState(null);
+  const [user, setUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('ssos_session')); } catch { return null; }
+  });
+  const [profile, setProfile] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('ssos_profile')); } catch { return null; }
+  });
+  const [report, setReport] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('ssos_report')); } catch { return null; }
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -79,6 +85,8 @@ function AppContent() {
 
   const handleLogout = () => {
     localStorage.removeItem('ssos_session');
+    localStorage.removeItem('ssos_profile');
+    localStorage.removeItem('ssos_report');
     setUser(null);
     setProfile(null);
     setReport(null);
@@ -95,6 +103,7 @@ function AppContent() {
       if (result?.readinessScore !== undefined) {
         setProfile(data);
         setReport(result);
+        try { localStorage.setItem('ssos_report', JSON.stringify(result)); localStorage.setItem('ssos_profile', JSON.stringify(data)); } catch {}
         toast('Career plan generated successfully!', 'success');
       } else {
         setError("Could not generate your career plan. Please try again.");

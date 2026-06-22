@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { GraduationCap, Bell, BellDot, LogOut, Menu, X, Flame, Target, Mic, FileText, BrainCircuit, Briefcase, LayoutDashboard } from 'lucide-react';
+import { GraduationCap, Bell, BellDot, LogOut, Menu, X, Flame, Target, Mic, FileText, Briefcase, LayoutDashboard } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'interview', label: 'Interview Prep', icon: Mic },
   { id: 'resume', label: 'Resume Check', icon: FileText },
-  { id: 'quiz', label: 'Skill Quiz', icon: BrainCircuit },
   { id: 'jobs', label: 'Jobs', icon: Briefcase },
 ];
 

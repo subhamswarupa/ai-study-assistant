@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Target, BookOpen, Clock, Mic, FileText, Briefcase, BrainCircuit } from 'lucide-react';
+import { LayoutDashboard, Target, BookOpen, Clock, Mic, FileText, Briefcase } from 'lucide-react';
 
 const sections = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -10,7 +10,6 @@ const sections = [
   { id: 'interview', label: 'Interview Simulator', icon: Mic },
   { id: 'resume', label: 'Resume Score', icon: FileText },
   { id: 'jobs', label: 'Job Matches', icon: Briefcase },
-  { id: 'quiz', label: 'Skill Quiz', icon: BrainCircuit },
 ];
 
 const Sidebar = ({ activeSection, onSectionChange, open, onClose }) => {
