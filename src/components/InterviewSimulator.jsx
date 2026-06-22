@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, Send, Lightbulb, CheckCircle, Loader2, MessageSquare, ArrowLeft, Award, Star, RefreshCw } from 'lucide-react';
 import { getInterviewQuestions, getInterviewFeedback } from '../services/geminiService';
 
-const InterviewSimulator = ({ career, toast }) => {
+const InterviewSimulator = ({ career, toast, onComplete }) => {
   const [questions, setQuestions] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -42,6 +42,7 @@ const InterviewSimulator = ({ career, toast }) => {
     } else {
       setFinished(true);
       if (toast) toast('Interview complete!', 'success');
+      if (onComplete) onComplete();
     }
   };
 

@@ -29,7 +29,8 @@ const LearningPathTracker = ({ career, toast }) => {
     }
 
     const path = await getLearningPath(career);
-    setNodes(path);
+    const nodesArray = Array.isArray(path) ? path : (path?.weeks || []);
+    setNodes(nodesArray);
     localStorage.setItem(PATH_KEY, JSON.stringify({ nodes: path, completed: [] }));
     setLoading(false);
   };

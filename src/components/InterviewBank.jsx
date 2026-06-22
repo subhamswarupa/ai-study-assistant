@@ -234,11 +234,15 @@ const InterviewBank = ({ toast }) => {
 
   const highlightText = (text, term) => {
     if (!term.trim()) return text;
-    const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escaped})`, 'gi');
     const parts = text.split(regex);
-    return parts.map((part, i) => regex.test(part)
-      ? <span key={i} className="bg-yellow-500/30 text-yellow-200 rounded px-0.5">{part}</span>
-      : part);
+    return parts.map((part, i) => {
+      if (part.toLowerCase() === term.toLowerCase()) {
+        return <span key={i} className="bg-yellow-500/30 text-yellow-200 rounded px-0.5">{part}</span>;
+      }
+      return part;
+    });
   };
 
   const uniqueTopics = [...new Set(QUESTIONS.map(q => q.topic))];

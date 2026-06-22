@@ -44,7 +44,7 @@ const callGroq = async (prompt, temperature = 0.7) => {
     });
     const data = await response.json();
     if (data.error) throw new Error(data.error.message);
-    const text = data.choices[0].message.content.replace(/```json\n?|\n?```/g, "").trim();
+    const text = (data?.choices?.[0]?.message?.content || '').replace(/```json\n?|\n?```/g, "").trim();
     setCache(cacheKey, text);
     return text;
   } catch (err) {
@@ -88,6 +88,14 @@ function findCareer(title) {
 
 // ----- AI REPORT -----
 export const getAIReport = async (profileData) => {
+  if (!profileData) {
+    return {
+      readinessScore: 75, strengths: ["Profile loaded", "Ready for analysis"],
+      weaknesses: ["Complete your profile for better insights"],
+      currentSkills: [], missingSkills: [], recommendedProjects: [],
+      roadmap: [], plan: [], weeklySchedule: {}, tips: ["Complete your profile to get personalized tips"]
+    };
+  }
   try {
     const prompt = `${SYSTEM_PROMPT}
 Analyze this student profile and return ONLY valid JSON (no markdown, no code fences):
@@ -125,7 +133,7 @@ Return JSON with this exact structure:
   const project = Math.round(hours * 0.30);
   const dsa = Math.round(hours * 0.20);
   const resume = hours - study - project - dsa;
-  const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   const weeklySchedule = {};
   days.forEach((day, di) => {
     weeklySchedule[day] = [["Study Core Concepts", study], ["Build Projects", project]].filter((_, ai) => (di + ai) % 2 === 0).slice(0, 2).map(([act, hrs], i) => ({
@@ -398,7 +406,8 @@ const JOB_LINKS = (title) => ({
 });
 
 export const getJobMatches = async (profile) => {
-  const careerKey = findCareer(profile.targetCareer);
+  if (!profile) return [];
+  const careerKey = findCareer(profile.targetCareer || "");
   const studentSkills = (profile.skills || "").split(",").map(s => s.trim().toLowerCase());
 
   let jobTitles = Object.keys(JOB_SKILLS_DB);

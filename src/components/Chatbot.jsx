@@ -6,6 +6,7 @@ import {
   Maximize2, Minimize2, Mic, Download, ChevronRight, History
 } from 'lucide-react';
 import { getAIResponse } from '../services/geminiService';
+import { useToast } from './Toast';
 
 const QUICK_QUESTIONS = [
   { icon: <Lightbulb size={14} />, text: "What should I learn first?" },
@@ -19,6 +20,7 @@ const QUICK_QUESTIONS = [
 const CHAT_HISTORY_KEY = 'ssos_chat_history';
 
 const Chatbot = ({ context }) => {
+  const toast = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [messages, setMessages] = useState([

@@ -167,7 +167,7 @@ Return ONLY valid JSON (no markdown, no backticks) with this structure:
   }
 }
 
-const ResumeScorer = ({ career, toast }) => {
+const ResumeScorer = ({ career, toast, onComplete }) => {
   const [resumeText, setResumeText] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -206,6 +206,7 @@ const ResumeScorer = ({ career, toast }) => {
         const analysis = await analyzeResumeWithAI(text, career);
         setResult(analysis);
         if (toast) toast('Resume analyzed!', 'success');
+        if (onComplete) onComplete();
       } catch (e) {
         console.warn('Analysis issue:', e.message);
         setResult({
@@ -217,6 +218,7 @@ const ResumeScorer = ({ career, toast }) => {
           rewriteSuggestion: "Add more quantifiable achievements to your project descriptions."
         });
         if (toast) toast('Resume analyzed with estimated scores!', 'success');
+        if (onComplete) onComplete();
       }
       setLoading(false);
       setStep(null);
@@ -224,7 +226,7 @@ const ResumeScorer = ({ career, toast }) => {
       if (toast) toast('Could not read this file. Please try a clearer image or paste your resume text below.', 'error');
       setStep(null);
     }
-  }, [career, toast]);
+  }, [career, toast, onComplete]);
 
   const handleDrop = useCallback((e) => {
     e.preventDefault();
@@ -245,6 +247,7 @@ const ResumeScorer = ({ career, toast }) => {
       const analysis = await analyzeResumeWithAI(resumeText, career);
       setResult(analysis);
       if (toast) toast('Resume analyzed!', 'success');
+      if (onComplete) onComplete();
     } catch (e) {
       console.warn('Analysis issue:', e.message);
       setResult({
@@ -256,6 +259,7 @@ const ResumeScorer = ({ career, toast }) => {
         rewriteSuggestion: "Add more quantifiable achievements to your project descriptions."
       });
       if (toast) toast('Resume analyzed with estimated scores!', 'success');
+      if (onComplete) onComplete();
     }
     setLoading(false);
     setStep(null);

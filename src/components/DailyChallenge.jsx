@@ -69,7 +69,8 @@ const DailyChallenge = ({ profile, toast }) => {
   const handleComplete = () => {
     setCompleted(true);
     updateStreak();
-    const cached = JSON.parse(localStorage.getItem(CHALLENGE_KEY) || '{}');
+    let cached = {};
+    try { cached = JSON.parse(localStorage.getItem(CHALLENGE_KEY) || '{}'); } catch {};
     cached.done = true;
     localStorage.setItem(CHALLENGE_KEY, JSON.stringify(cached));
     if (toast) toast('Challenge completed! Keep the streak going!', 'success');

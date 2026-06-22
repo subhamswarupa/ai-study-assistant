@@ -33,7 +33,7 @@ const Navbar = ({ user, activeSection, onNavigate, onLogout, dailyTip }) => {
   useEffect(() => {
     if (dailyTip && notifications.length > 0) {
       const updated = [...notifications];
-      updated[1] = { ...updated[1], text: dailyTip.tip || updated[1].text };
+      updated[1] = { ...(updated[1] || {}), text: dailyTip.tip || updated[1]?.text || '' };
       setNotifications(updated);
       localStorage.setItem('ssos_notifications', JSON.stringify(updated));
     }

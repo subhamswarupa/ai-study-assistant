@@ -112,7 +112,7 @@ function AppContent() {
       }
     } catch (err) {
       console.warn('Report generation fallback:', err.message);
-      const report = await getAIReport(formData);
+      const report = await getAIReport(data);
       setReport(report);
       localStorage.setItem('ssos_report', JSON.stringify(report));
       setPage('dashboard');
