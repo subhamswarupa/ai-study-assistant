@@ -1,7 +1,7 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+const groq = apiKey ? new Groq({ apiKey, dangerouslyAllowBrowser: true }) : null;
 
 const CACHE_TTL = 24 * 60 * 60 * 1000;
 
@@ -22,10 +22,6 @@ function setCache(key, data) {
   } catch {}
 }
 
-function getModel() {
-  return apiKey ? genAI.getGenerativeModel({ model: "gemini-2.0-flash" }) : null;
-}
-
 const SYSTEM_PROMPT = `You are Student Success OS — an AI Career and Productivity Coach for students.
 Your ONLY job is helping students become internship-ready.
 CORE RULES:
@@ -38,22 +34,23 @@ CORE RULES:
 • Keep responses concise and actionable.`;
 
 async function callGemini(prompt, temperature = 0.7) {
-  const cacheKey = 'gemini_cache_' + btoa(prompt.slice(0, 200)).replace(/[/+=]/g, '_') + '_' + temperature;
+  const cacheKey = 'groq_cache_' + btoa(prompt.slice(0, 200)).replace(/[/+=]/g, '_') + '_' + temperature;
   const cached = getCached(cacheKey);
   if (cached) return cached;
 
-  const model = getModel();
-  if (!model) return null;
+  if (!groq) return null;
   try {
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { temperature, maxOutputTokens: 500 }
+    const completion = await groq.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: "llama3-8b-8192",
+      temperature,
+      max_tokens: 500
     });
-    const text = result.response.text().replace(/```json\n?|\n?```/g, "").trim();
+    const text = completion.choices[0].message.content.replace(/```json\n?|\n?```/g, "").trim();
     setCache(cacheKey, text);
     return text;
   } catch (err) {
-    console.warn("Gemini API call failed:", err.message);
+    console.warn("Groq API call failed:", err.message);
     return null;
   }
 }
