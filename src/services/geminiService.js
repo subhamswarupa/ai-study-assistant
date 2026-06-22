@@ -1,9 +1,7 @@
-import Groq from "groq-sdk";
-
-const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-const groq = apiKey ? new Groq({ apiKey, dangerouslyAllowBrowser: true }) : null;
-
 const CACHE_TTL = 24 * 60 * 60 * 1000;
+
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 function getCached(key) {
   try {
@@ -22,6 +20,36 @@ function setCache(key, data) {
   } catch {}
 }
 
+const callGroq = async (prompt, temperature = 0.7) => {
+  const cacheKey = 'groq_cache_' + btoa(prompt.slice(0, 200)).replace(/[/+=]/g, '_') + '_' + temperature;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const response = await fetch(GROQ_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${GROQ_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "llama3-8b-8192",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 1000,
+        temperature
+      })
+    });
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.choices[0].message.content.replace(/```json\n?|\n?```/g, "").trim();
+    setCache(cacheKey, text);
+    return text;
+  } catch (err) {
+    console.warn("Groq API call failed:", err.message);
+    return null;
+  }
+};
+
 const SYSTEM_PROMPT = `You are Student Success OS — an AI Career and Productivity Coach for students.
 Your ONLY job is helping students become internship-ready.
 CORE RULES:
@@ -32,28 +60,6 @@ CORE RULES:
 • Focus on: skills, projects, learning roadmaps, study plans, internship prep.
 • Be encouraging but honest about skill gaps.
 • Keep responses concise and actionable.`;
-
-async function callGemini(prompt, temperature = 0.7) {
-  const cacheKey = 'groq_cache_' + btoa(prompt.slice(0, 200)).replace(/[/+=]/g, '_') + '_' + temperature;
-  const cached = getCached(cacheKey);
-  if (cached) return cached;
-
-  if (!groq) return null;
-  try {
-    const completion = await groq.chat.completions.create({
-      messages: [{ role: "user", content: prompt }],
-      model: "llama3-8b-8192",
-      temperature,
-      max_tokens: 500
-    });
-    const text = completion.choices[0].message.content.replace(/```json\n?|\n?```/g, "").trim();
-    setCache(cacheKey, text);
-    return text;
-  } catch (err) {
-    console.warn("Groq API call failed:", err.message);
-    return null;
-  }
-}
 
 function parseJSON(text, fallback) {
   try { return JSON.parse(text); } catch { return fallback; }
@@ -95,7 +101,7 @@ Return JSON with this exact structure:
   "weeklySchedule": { "Monday": [{ "time": "...", "activity": "...", "color": "bg-...", "duration": "..." }], ... },
   "tips": ["..."]
 }`;
-  let text = await callGemini(prompt);
+  let text = await callGroq(prompt);
   if (text) {
     const parsed = parseJSON(text, null);
     if (parsed?.readinessScore !== undefined) return parsed;
@@ -167,7 +173,7 @@ IMPORTANT RULES:
 • If asked for interview tips, give tips specific to their target career
 • If asked for job matches, suggest real roles based on their skills`;
 
-  const text = await callGemini(prompt, 0.9);
+  const text = await callGroq(prompt, 0.9);
   if (text) return text;
 
   let name = "there";
@@ -202,7 +208,7 @@ Generate 5 unique technical interview questions for a ${career} intern position.
 Every time these questions are requested they must be DIFFERENT — never repeat the same set.
 Return ONLY valid JSON array (no markdown):
 [{ "id": 1, "question": "...", "category": "Technical|Behavioral|System Design", "hint": "..." }]`;
-  const text = await callGemini(prompt, 0.9);
+  const text = await callGroq(prompt, 0.9);
   if (text) {
     const parsed = parseJSON(text, null);
     if (Array.isArray(parsed) && parsed.length === 5) return parsed;
@@ -238,7 +244,7 @@ Candidate's Answer: "${answer}"
 Rate the answer 1-10 and provide detailed feedback.
 Return ONLY valid JSON (no markdown):
 { "score": <1-10>, "feedback": "...", "strengths": ["..."], "improvements": ["..."] }`;
-  const text = await callGemini(prompt, 0.7);
+  const text = await callGroq(prompt, 0.7);
   if (text) {
     const parsed = parseJSON(text, null);
     if (parsed?.score) return parsed;
@@ -270,7 +276,7 @@ Return ONLY valid JSON (no markdown) with this structure:
   "keywordsFound": ["..."],
   "keywordsMissing": ["..."]
 }`;
-  const text = await callGemini(prompt, 0.7);
+  const text = await callGroq(prompt, 0.7);
   if (text) {
     const parsed = parseJSON(text, null);
     if (parsed?.score) return parsed;
@@ -442,7 +448,7 @@ The challenge should:
 
 Return ONLY valid JSON (no markdown):
 { "title": "...", "description": "...", "type": "coding|learning|building|research", "estimatedMinutes": <15-45>, "hint": "...", "expectedOutcome": "..." }`;
-  const text = await callGemini(prompt, 0.9);
+  const text = await callGroq(prompt, 0.9);
   if (text) {
     const parsed = parseJSON(text, null);
     if (parsed?.title) return parsed;
@@ -466,7 +472,7 @@ Return ONLY a JSON array of topic names (strings only, no objects):
 ["Topic1", "Topic2", ...]
 
 Topics should be specific technical skills related to their target career. Include a mix of their known skills and skills they need to learn.`;
-  const text = await callGemini(prompt, 0.9);
+  const text = await callGroq(prompt, 0.9);
   if (text) {
     const parsed = parseJSON(text, null);
     if (Array.isArray(parsed) && parsed.length >= 4) return parsed;
@@ -483,9 +489,7 @@ Topics should be specific technical skills related to their target career. Inclu
   return allTopics.slice(0, 10);
 };
 
-// ----- SKILL QUIZ removed — now handled directly in SkillQuiz.jsx -----
-
-// ----- IMAGE OCR removed — now handled directly in ResumeScorer.jsx -----
+// ----- GROQ API is used for all AI calls via callGroq() -----
 
 // ----- LEARNING PATH (NEW) -----
 export const getLearningPath = async (career) => {
@@ -498,7 +502,7 @@ Every time this is called, generate a DIFFERENT path.
 
 Return ONLY valid JSON array (no markdown):
 [{ "id": 1, "title": "...", "description": "...", "type": "skill|project|concept", "estimatedWeeks": <1-4>, "dependencies": [2] }]`;
-  const text = await callGemini(prompt, 0.9);
+  const text = await callGroq(prompt, 0.9);
   if (text) {
     const parsed = parseJSON(text, null);
     if (Array.isArray(parsed) && parsed.length >= 4) return parsed;
@@ -526,7 +530,7 @@ Give one specific, actionable career tip for this student. Keep it 1-2 sentences
 Be different each time — never repeat the same tip.
 Return ONLY JSON: { "tip": "...", "icon": "💡|🎯|📚|⚡|🔥" }
 Profile: ${JSON.stringify(profile)}`;
-  const text = await callGemini(prompt, 0.9);
+  const text = await callGroq(prompt, 0.9);
   if (text) {
     const parsed = parseJSON(text, null);
     if (parsed?.tip) return parsed;

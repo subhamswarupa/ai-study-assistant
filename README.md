@@ -87,7 +87,7 @@ cd student-success-os
 npm install
 
 # Create environment file
-echo "VITE_GEMINI_API_KEY=your_api_key_here" > .env
+echo "VITE_GROQ_API_KEY=your_groq_api_key_here" > .env
 ```
 
 ### Run Development Server
@@ -109,7 +109,7 @@ npm run preview
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `VITE_GEMINI_API_KEY` | Yes | Your Google Gemini API key |
+| `VITE_GROQ_API_KEY` | Yes | Your Groq API key (get one free at console.groq.com) |
 
 ## Career Paths Supported
 

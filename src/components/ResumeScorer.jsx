@@ -1,9 +1,8 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Upload, CheckCircle, XCircle, Loader2, AlertTriangle, Sparkles, BarChart3, Target, Award, File, FileImage, FileSearch, X, Lightbulb, BookOpen } from 'lucide-react';
-import Groq from "groq-sdk";
-
-const groq = new Groq({ apiKey: import.meta.env.VITE_GROQ_API_KEY, dangerouslyAllowBrowser: true });
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 function extractFileType(name) {
   const ext = name.split('.').pop().toLowerCase();
@@ -30,21 +29,28 @@ const extractTextFromImage = async (file) => {
 
   const base64 = await toBase64(file);
 
-  const completion = await groq.chat.completions.create({
-    messages: [
-      {
+  const response = await fetch(GROQ_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${GROQ_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: "llama-3.2-90b-vision-preview",
+      messages: [{
         role: "user",
         content: [
           { type: "text", text: "This is a resume image. Extract ALL text from it. Return only the plain text, nothing else." },
           { type: "image_url", image_url: { url: `data:${file.type};base64,${base64}` } }
         ]
-      }
-    ],
-    model: "llama-3.2-90b-vision-preview",
-    max_tokens: 1024
+      }],
+      max_tokens: 1024
+    })
   });
 
-  return completion.choices[0].message.content;
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.choices[0].message.content;
 };
 
 async function extractTextFromFile(file) {
@@ -101,10 +107,17 @@ async function extractTextFromFile(file) {
 }
 
 async function analyzeResumeWithAI(resumeText, career) {
-  const completion = await groq.chat.completions.create({
-    messages: [{
-      role: "user",
-      content: `You are an expert ATS resume analyzer. Analyze this resume for a ${career} position.
+  const response = await fetch(GROQ_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${GROQ_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: "llama3-8b-8192",
+      messages: [{
+        role: "user",
+        content: `You are an expert ATS resume analyzer. Analyze this resume for a ${career} position.
 
 Resume:
 ${resumeText}
@@ -124,12 +137,14 @@ Return ONLY valid JSON (no markdown, no backticks) with this structure:
   },
   "rewriteSuggestion": "One specific rewrite suggestion to improve this resume"
 }`
-    }],
-    model: "llama3-8b-8192",
-    temperature: 0.7,
-    max_tokens: 500
+      }],
+      temperature: 0.7,
+      max_tokens: 500
+    })
   });
-  const rawText = completion.choices[0].message.content;
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message);
+  const rawText = data.choices[0].message.content;
   const clean = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
   return JSON.parse(clean);
 }
