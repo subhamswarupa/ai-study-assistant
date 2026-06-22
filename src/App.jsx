@@ -111,9 +111,12 @@ function AppContent() {
         toast('Failed to generate plan', 'error');
       }
     } catch (err) {
-      setError(err.message || "Something went wrong during analysis.");
-      setPage('form');
-      toast('Analysis failed', 'error');
+      console.warn('Report generation fallback:', err.message);
+      const report = await getAIReport(formData);
+      setReport(report);
+      localStorage.setItem('ssos_report', JSON.stringify(report));
+      setPage('dashboard');
+      toast('Showing estimated career plan', 'info');
     } finally {
       setLoading(false);
     }
